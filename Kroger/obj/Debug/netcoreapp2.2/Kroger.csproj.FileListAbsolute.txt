@@ -1,0 +1,17 @@
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\appsettings.Development.json
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\appsettings.json
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\Properties\launchSettings.json
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\Kroger.deps.json
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\Kroger.runtimeconfig.json
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\Kroger.runtimeconfig.dev.json
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\Kroger.dll
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\obj\Debug\netcoreapp2.2\Kroger.csprojAssemblyReference.cache
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\obj\Debug\netcoreapp2.2\Kroger.RazorAssemblyInfo.cache
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\obj\Debug\netcoreapp2.2\Kroger.RazorAssemblyInfo.cs
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\obj\Debug\netcoreapp2.2\Kroger.AssemblyInfoInputs.cache
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\obj\Debug\netcoreapp2.2\Kroger.AssemblyInfo.cs
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\obj\Debug\netcoreapp2.2\Kroger.RazorTargetAssemblyInfo.cache
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\Kroger.pdb
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\obj\Debug\netcoreapp2.2\Kroger.dll
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\obj\Debug\netcoreapp2.2\Kroger.pdb
+C:\Users\Heath Moore\source\repos\Kroger\Kroger\bin\Debug\netcoreapp2.2\libman.json
