@@ -9,7 +9,7 @@ using Kroger.Models;
 
 namespace Kroger.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/user")]
     [ApiController]
     public class UserController : ControllerBase
     {
@@ -30,6 +30,15 @@ namespace Kroger.Controllers
             repo.CreateUser(usercommand);
             return Ok();
         }
+
+        [HttpGet]
+        public int GetUserCount()
+        {
+            var repo = new UserRepository();
+            var output = repo.GetNumberOfUsers();
+            return output;
+        }
+
 
         // PUT api/values/5
         [HttpPut("{id}")]

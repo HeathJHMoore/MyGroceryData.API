@@ -8,7 +8,7 @@ using Kroger.Models;
 
 namespace Kroger.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/product")]
     [ApiController]
     public class ValuesController : ControllerBase
     {

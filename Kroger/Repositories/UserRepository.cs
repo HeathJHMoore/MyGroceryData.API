@@ -17,6 +17,16 @@ namespace Kroger.Repositories
         static string _username = credentials.username;
         string _connectionString = $@"Username={_username};Password={_password};Host=ec2-174-129-253-47.compute-1.amazonaws.com;Database=d5be1shopark8h;Port=5432;SSL Mode=Require;Trust Server Certificate=True;";
 
+        public int GetNumberOfUsers()
+        {
+            using(var db = new NpgsqlConnection(_connectionString))
+            {
+                var sql = "SET search_path TO public; SELECT count(*) FROM users";
+                var check = db.QueryFirst(sql);
+                return check;
+            };
+        }
+
         public int CheckUser(string userFirebaseId)
         {
             using (var db = new NpgsqlConnection(_connectionString))
