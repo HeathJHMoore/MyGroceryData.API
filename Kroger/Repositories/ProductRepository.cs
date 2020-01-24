@@ -81,5 +81,49 @@ namespace Kroger.Repositories
                 return product;
             };
         }
+
+        public ProductDetails GetProductSummaryInformation(string productId, string locationid)
+        {
+            using (var db = new NpgsqlConnection(_connectionString))
+            {
+                var sql = @"with maxDate as (
+                                                        SELECT 
+                                                            max(Capturedate) as max_date 
+                                                        FROM daily_product_snapshot
+                                                    )
+                            , todays_product_info as (
+                                                        SELECT 
+                                                            dps.*
+                                                        FROM daily_product_snapshot dps
+                                                            join maxDate mx on mx.max_date = dps.Capturedate
+                                                        WHERE dps.productid = '0001111091131' and dps.locationid = '02600567'
+                            						)
+                            						
+                            , product_summary_info as (
+                            							Select 
+                            							    productid,
+                            								max(productregularprice) as max_regular_price,
+                            	                            max(productpromoprice) as max_promo_price,
+                            	                            min(productregularprice) as min_regular_price,
+                            	                            min(productpromoprice) filter (where productpromoprice <> 0) as         min_promo_price
+                            							FROM daily_product_snapshot dps
+                            	                        WHERE dps.productid = '0001111091131' and dps.locationid = '02600567'
+                            							GROUP BY 1
+                            						)
+                            
+                            SELECT td.productid,
+                                   td.locationid,
+                                   td.productname,
+                              	   case when td.productpromoprice = 0 then td.productregularprice else td.productpromoprice end as          pricetoday,
+                              	   pr.max_regular_price as maxprice,
+                              	   case when pr.max_promo_price = 0 then pr.min_regular_price else pr.min_promo_price end as    minprice
+                            FROM todays_product_info td
+	                            JOIN product_summary_info pr
+		                            on pr.productid = td.productid";
+                var param = new { ProductID = productId, LocationId = locationid };
+                var productdetails = db.QueryFirst<ProductDetails>(sql, param);
+                return productdetails;
+            };
+        }
     }
 }

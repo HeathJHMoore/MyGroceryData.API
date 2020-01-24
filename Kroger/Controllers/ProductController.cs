@@ -45,6 +45,13 @@ namespace Kroger.Controllers
             return repo.GetMinimumPriceByProduct(productId);
         }
 
+        [HttpGet("{productId}/{locationid}/details")]
+        public ProductDetails GetProductDetails(string productId, string locationid)
+        {
+            var repo = new ProductRepository();
+            return repo.GetProductSummaryInformation(productId, locationid);
+        }
+
         // POST api/values
         [HttpPost]
         public void Post([FromBody] string value)
