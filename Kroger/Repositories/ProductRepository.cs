@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Kroger.Models;
+using System.Data.SqlClient;
 using Npgsql;
 using Dapper;
 
@@ -10,15 +11,17 @@ namespace Kroger.Repositories
 {
     public class ProductRepository
     {
+
+        string _connectionString = "Server=localhost;Database=MyGroceryData;Trusted_Connection=True;";
         //set up a static credential class to keep my username and password private on my local machine
-        static Secret credentials = new Secret();
-        static string _password = credentials.secret;
-        static string _username = credentials.username;
-        string _connectionString = $@"Username={_username};Password={_password};Host=ec2-174-129-253-47.compute-1.amazonaws.com;Database=d5be1shopark8h;Port=5432;SSL Mode=Require;Trust Server Certificate=True;";
+        //static Secret credentials = new Secret();
+        //static string _password = credentials.secret;
+        //static string _username = credentials.username;
+        //string _connectionString = $@"Username={_username};Password={_password};Host=ec2-174-129-253-47.compute-1.amazonaws.com;Database=d5be1shopark8h;Port=5432;SSL Mode=Require;Trust Server Certificate=True;";
 
         public IEnumerable<Product> GetAllProducts()
         {
-            using (var db = new NpgsqlConnection(_connectionString))
+            using (var db = new SqlConnection(_connectionString))
             {
                 var sql = @"with maxDate as (
                                 SELECT 
@@ -26,8 +29,10 @@ namespace Kroger.Repositories
                                 FROM daily_product_snapshot
                             )
                             SELECT 
-                                dps.*
+                                dps.*,
+                                pd.productname
                             FROM daily_product_snapshot dps
+                                JOIN products pd on pd.productId = dps.productId
                                 JOIN maxDate mx on mx.max_date = dps.Capturedate";
                 var product = db.Query<Product>(sql);
                 return product;
@@ -36,7 +41,7 @@ namespace Kroger.Repositories
 
         public Product GetSingleProductInformation(string productId)
         {
-            using (var db = new NpgsqlConnection(_connectionString))
+            using (var db = new SqlConnection(_connectionString))
             {
                 var sql = @"with maxDate as (
                                 SELECT 
@@ -56,12 +61,12 @@ namespace Kroger.Repositories
 
         public float GetMaximumPriceByProduct(string productId)
         {
-            using (var db = new NpgsqlConnection(_connectionString))
+            using (var db = new SqlConnection(_connectionString))
             {
                 var sql = @"SELECT 
-                                max(productRegularPrice)::float 
+                                cast(max(productRegularPrice) as float) as productRegularPrice
                             FROM daily_product_snapshot 
-                            WHERE Productid = @product;";
+                            WHERE Productid = '4046';";
                 var param = new { product = productId };
                 var product = db.QueryFirst<float>(sql, param);
                 return product;
@@ -70,7 +75,7 @@ namespace Kroger.Repositories
 
         public float GetMinimumPriceByProduct(string productId)
         {
-            using (var db = new NpgsqlConnection(_connectionString))
+            using (var db = new SqlConnection(_connectionString))
             {
                 var sql = @"SELECT 
                                 coalesce(min(productPromoPrice), min(productRegularPrice))::float 
@@ -84,7 +89,7 @@ namespace Kroger.Repositories
 
         public ProductDetails GetProductSummaryInformation(string productId, string locationid)
         {
-            using (var db = new NpgsqlConnection(_connectionString))
+            using (var db = new SqlConnection(_connectionString))
             {
                 var sql = @"with maxDate as (
                                                         SELECT 
