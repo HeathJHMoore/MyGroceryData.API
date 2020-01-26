@@ -23,7 +23,7 @@ namespace Kroger.Controllers
         }
 
         // Create user account in database
-        [HttpPost("createuser/{firebaseId}")]
+        [HttpPost("createuser")]
         public IActionResult CreateUser(UserCommand usercommand)
         {
             var repo = new UserRepository();

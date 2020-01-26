@@ -29,7 +29,7 @@ namespace Kroger.Repositories
                             FROM users u
                             WHERE u.firebaseid = @FirebaseID;";
                 var para = new { FireBaseID = userFirebaseId };
-                var check = db.QueryFirst(sql, para);
+                var check = db.QueryFirst<int>(sql, para);
                 return check;
             };
         }
@@ -39,7 +39,7 @@ namespace Kroger.Repositories
             using (var db = new SqlConnection(_connectionString))
             {
                 var sql = @"Insert into users (firebaseId, defaultlocationid, firstname, lastname, createddate)
-                            values (@firebaseid, @defaultlocationid, @firstname, @lastname, now())";
+                            values (@firebaseid, @defaultlocationid, @firstname, @lastname, GETDATE())";
                 var para = new
                 {
                     firebaseid = usercommand.FirebaseId,
