@@ -87,45 +87,61 @@ namespace Kroger.Repositories
             };
         }
 
-        public ProductDetails GetProductSummaryInformation(string productId, string locationid)
+        public ProductDetails GetProductSummaryInformation(string firebaseId, string productId)
         {
             using (var db = new SqlConnection(_connectionString))
             {
-                var sql = @"with maxDate as (
-                                                        SELECT 
-                                                            max(Capturedate) as max_date 
-                                                        FROM daily_product_snapshot
-                                                    )
-                            , todays_product_info as (
-                                                        SELECT 
-                                                            dps.*
-                                                        FROM daily_product_snapshot dps
-                                                            join maxDate mx on mx.max_date = dps.Capturedate
-                                                        WHERE dps.productid = '0001111091131' and dps.locationid = '02600567'
-                            						)
-                            						
+                var sql = @"
+                            with maxDate as (
+                            					SELECT 
+                            					    max(Capturedate) as max_date 
+                            					FROM daily_product_snapshot
+                            				)
+                            ,current_user as (
+                                                Select u.*
+                                                FROM users u
+                                                WHERE u.firebaseid = @FirebaseId
+                                            )
+                            ,todays_product_info as (
+                                                SELECT 
+                                                    dps.*
+                                                FROM daily_product_snapshot dps
+                                                    join maxDate mx on mx.max_date = dps.Capturedate
+                                                WHERE dps.productid = @ProductId
+                                             )  						
                             , product_summary_info as (
-                            							Select 
-                            							    productid,
-                            								max(productregularprice) as max_regular_price,
-                            	                            max(productpromoprice) as max_promo_price,
-                            	                            min(productregularprice) as min_regular_price,
-                            	                            min(productpromoprice) filter (where productpromoprice <> 0) as         min_promo_price
-                            							FROM daily_product_snapshot dps
-                            	                        WHERE dps.productid = '0001111091131' and dps.locationid = '02600567'
-                            							GROUP BY 1
-                            						)
-                            
-                            SELECT td.productid,
-                                   td.locationid,
-                                   td.productname,
-                              	   case when td.productpromoprice = 0 then td.productregularprice else td.productpromoprice end as          pricetoday,
-                              	   pr.max_regular_price as maxprice,
-                              	   case when pr.max_promo_price = 0 then pr.min_regular_price else pr.min_promo_price end as    minprice
-                            FROM todays_product_info td
-	                            JOIN product_summary_info pr
-		                            on pr.productid = td.productid";
-                var param = new { ProductID = productId, LocationId = locationid };
+                                                Select 
+                                                    productid,
+                                                	max(dps.productregularprice) as max_regular_price,
+                                                                      max(productpromoprice) as max_promo_price,
+                                                                      min(productregularprice) as min_regular_price
+                                                FROM daily_product_snapshot dps
+                                                                  WHERE dps.productid = @ProductId
+                                                GROUP BY ProductId
+                                              )
+                            , minimum_promo_price as (
+                            					Select 
+                            						dps.ProductId,
+                            						min(ProductPromoPrice) as min_promo_price
+                            					FROM daily_product_snapshot dps
+                            					WHERE dps.productid = @ProductId and ProductPromoPrice <> 0
+                                                      GROUP BY ProductId
+				                               )
+                         
+                    SELECT td.productid,
+                           td.locationid,
+                           pd.productname,
+                      	   case when td.productpromoprice = 0 then td.productregularprice else td.productpromoprice end as pricetoday,
+                      	   pr.max_regular_price as maxprice,
+                      	   case when pr.max_promo_price = 0 then pr.min_regular_price else mp.min_promo_price end as    minprice
+                    FROM todays_product_info td
+	                    JOIN product_summary_info pr 
+							on pr.productid = td.productid
+						JOIN products pd 
+							on pd.ProductId = td.productid
+						JOIN minimum_promo_price mp 
+							on mp.ProductId = td.ProductId;";
+                var param = new { FirebaseId = firebaseId, ProductID = productId};
                 var productdetails = db.QueryFirst<ProductDetails>(sql, param);
                 return productdetails;
             };
