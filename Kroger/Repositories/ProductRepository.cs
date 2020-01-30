@@ -97,7 +97,7 @@ namespace Kroger.Repositories
                             					    max(Capturedate) as max_date 
                             					FROM daily_product_snapshot
                             				)
-                            ,current_user as (
+                            ,currentuser as (
                                                 Select u.*
                                                 FROM users u
                                                 WHERE u.firebaseid = @FirebaseId
@@ -106,7 +106,10 @@ namespace Kroger.Repositories
                                                 SELECT 
                                                     dps.*
                                                 FROM daily_product_snapshot dps
-                                                    join maxDate mx on mx.max_date = dps.Capturedate
+                                                    JOIN currentuser cu 
+                                                        ON cu.DefaultLocationId = dps.LocationId
+                                                    JOIN maxDate mx 
+                                                        ON mx.max_date = dps.Capturedate
                                                 WHERE dps.productid = @ProductId
                                              )  						
                             , product_summary_info as (
@@ -116,7 +119,9 @@ namespace Kroger.Repositories
                                                                       max(productpromoprice) as max_promo_price,
                                                                       min(productregularprice) as min_regular_price
                                                 FROM daily_product_snapshot dps
-                                                                  WHERE dps.productid = @ProductId
+                                                JOIN currentuser cu 
+                                                    ON cu.DefaultLocationId = dps.LocationId
+                                                WHERE dps.productid = @ProductId
                                                 GROUP BY ProductId
                                               )
                             , minimum_promo_price as (
@@ -124,7 +129,9 @@ namespace Kroger.Repositories
                             						dps.ProductId,
                             						min(ProductPromoPrice) as min_promo_price
                             					FROM daily_product_snapshot dps
-                            					WHERE dps.productid = @ProductId and ProductPromoPrice <> 0
+                                                JOIN currentuser cu
+                                                    ON cu.DefaultLocationId = dps.LocationId
+                            					WHERE dps.productid = @ProductId
                                                       GROUP BY ProductId
 				                               )
                          
