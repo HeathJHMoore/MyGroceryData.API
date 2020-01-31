@@ -113,7 +113,7 @@ namespace Kroger.Repositories
                                                 WHERE dps.productid = @ProductId
                                              )  						
                             , product_summary_info as (
-                                                Select 
+                                                SELECT
                                                     productid,
                                                 	max(dps.productregularprice) as max_regular_price,
                                                                       max(productpromoprice) as max_promo_price,
@@ -125,7 +125,7 @@ namespace Kroger.Repositories
                                                 GROUP BY ProductId
                                               )
                             , minimum_promo_price as (
-                            					Select 
+                            					SELECT 
                             						dps.ProductId,
                             						min(ProductPromoPrice) as min_promo_price
                             					FROM daily_product_snapshot dps
@@ -134,20 +134,29 @@ namespace Kroger.Repositories
                             					WHERE dps.productid = @ProductId
                                                       GROUP BY ProductId
 				                               )
+                            ,time_on_clearance as (
+	                                            SELECT 
+	                                            	Cast(sum(case when dps.ProductPromoPrice <> 0 then 1 else 0 end) as decimal) as numerator,
+	                                            	Cast(count(*) as decimal) as denominator
+	                                            FROM daily_product_snapshot dps
+	                                            WHERE dps.ProductId = @ProductId
+                                               )
                          
                     SELECT td.productid,
                            td.locationid,
                            pd.productname,
                       	   case when td.productpromoprice = 0 then td.productregularprice else td.productpromoprice end as pricetoday,
                       	   pr.max_regular_price as maxprice,
-                      	   case when pr.max_promo_price = 0 then pr.min_regular_price else mp.min_promo_price end as    minprice
+                      	   case when pr.max_promo_price = 0 then pr.min_regular_price else mp.min_promo_price end as    minprice,
+                           toc.numerator / toc.denominator as time_on_clearance
                     FROM todays_product_info td
 	                    JOIN product_summary_info pr 
 							on pr.productid = td.productid
 						JOIN products pd 
 							on pd.ProductId = td.productid
 						JOIN minimum_promo_price mp 
-							on mp.ProductId = td.ProductId;";
+							on mp.ProductId = td.ProductId;
+                        CROSS JOIN time_on_clearance toc";
                 var param = new { FirebaseId = firebaseId, ProductID = productId};
                 var productdetails = db.QueryFirst<ProductDetails>(sql, param);
                 return productdetails;
