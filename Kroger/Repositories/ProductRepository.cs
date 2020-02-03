@@ -132,6 +132,7 @@ namespace Kroger.Repositories
                                                 JOIN currentuser cu
                                                     ON cu.DefaultLocationId = dps.LocationId
                             					WHERE dps.productid = @ProductId
+                                                AND dps.ProductPromoPrice <> 0
                                                       GROUP BY ProductId
 				                               )
                             ,time_on_clearance as (
