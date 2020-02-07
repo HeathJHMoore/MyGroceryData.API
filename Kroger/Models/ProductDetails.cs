@@ -12,8 +12,8 @@ namespace Kroger.Models
         public string ProductName { get; set; }
         public float PriceToday { get; set; }
         public float MaxPrice { get; set; }
+        public float AveragePrice { get; set; }
         public float MinPrice { get; set; }
-
         public float TimeOnClearance { get; set; }
     }
 }

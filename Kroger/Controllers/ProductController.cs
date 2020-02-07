@@ -52,6 +52,13 @@ namespace Kroger.Controllers
             return repo.GetProductSummaryInformation(firebaseId, productId);
         }
 
+        [HttpGet("{firebaseId}/{productId}/{startDate}/seven-day-trend")]
+        public IEnumerable<object> GetSevenDayTrend(string firebaseId, string productId, string startDate)
+        {
+            var repo = new ProductRepository();
+            return repo.Get7DayPriceAction(firebaseId, productId, startDate);
+        }
+
         // POST api/values
         [HttpPost]
         public void Post([FromBody] string value)

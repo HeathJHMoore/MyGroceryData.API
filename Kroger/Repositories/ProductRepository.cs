@@ -111,13 +111,28 @@ namespace Kroger.Repositories
                                                     JOIN maxDate mx 
                                                         ON mx.max_date = dps.Capturedate
                                                 WHERE dps.productid = @ProductId
-                                             )  						
+                                             )  	
+                            , average_price as (
+                                                Select 
+                                                	p.ProductId, 
+                                                	round(avg(p.daily_price), 2) as average_price
+                                                FROM (
+                                                	SELECT 
+                                                		dps.ProductId,
+                                                		case when dps.ProductPromoPrice = 0 then dps.ProductRegularPrice else dps.ProductPromoPrice end as daily_price
+                                                	FROM daily_product_snapshot dps
+                                                		JOIN currentuser cu on cu.DefaultLocationId = dps.LocationId
+                                                	WHERE dps.ProductId = @ProductId
+                                                ) p
+                                                GROUP BY p.ProductId
+                            )
                             , product_summary_info as (
                                                 SELECT
                                                     productid,
                                                 	max(dps.productregularprice) as max_regular_price,
-                                                                      max(productpromoprice) as max_promo_price,
-                                                                      min(productregularprice) as min_regular_price
+                                                    
+                                                    max(productpromoprice) as max_promo_price,
+                                                    min(productregularprice) as min_regular_price
                                                 FROM daily_product_snapshot dps
                                                 JOIN currentuser cu 
                                                     ON cu.DefaultLocationId = dps.LocationId
@@ -148,6 +163,7 @@ namespace Kroger.Repositories
                            pd.productname,
                       	   case when td.productpromoprice = 0 then td.productregularprice else td.productpromoprice end as pricetoday,
                       	   pr.max_regular_price as maxprice,
+                           avp.average_price as averageprice,
                       	   case when pr.max_promo_price = 0 then pr.min_regular_price else mp.min_promo_price end as    minprice,
                            round((toc.numerator / toc.denominator) * 100, 2) as timeonclearance
                     FROM todays_product_info td
@@ -157,11 +173,62 @@ namespace Kroger.Repositories
 							on pd.ProductId = td.productid
 						JOIN minimum_promo_price mp 
 							on mp.ProductId = td.ProductId
-                        CROSS JOIN time_on_clearance toc";
+                        CROSS JOIN time_on_clearance toc
+                        CROSS JOIN average_price avp";
                 var param = new { FirebaseId = firebaseId, ProductID = productId};
                 var productdetails = db.QueryFirst<ProductDetails>(sql, param);
                 return productdetails;
             };
+        }
+
+        public IEnumerable<object> Get7DayPriceAction(string firebaseid, string productId, string date)
+        {
+            using (var db = new SqlConnection(_connectionString))
+            {
+                var sql = @"
+                          WITH currentuser AS (
+                          	SELECT *
+                          	FROM users u
+                          	WHERE u.FirebaseId = @FirebaseId
+                          )
+                          
+                          , daterange as (
+                          	SELECT	
+                          	DATEADD(day, 0, @StartDate) as day_number
+                          	UNION 
+                          	Select
+                          	DATEADD(day, 1, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 2, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 3, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 4, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 5, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 6, @StartDate) as day_number
+                          )
+                          
+                          
+                          SELECT 
+                          	dps.CaptureDate,
+                          	case when dps.ProductPromoPrice = 0 then dps.ProductRegularPrice else dps.ProductPromoPrice end as Price
+                          FROM daterange dr
+                          	JOIN daily_product_snapshot dps 
+                          		ON dps.CaptureDate = dr.day_number
+                          	JOIN currentuser cu 
+                          		ON cu.DefaultLocationId = dps.LocationId
+                          WHERE dps.ProductId = @ProductId;";
+                var param = new {FirebaseId = firebaseid, ProductId = productId, StartDate = date};
+                var sevendayprices = db.Query(sql, param);
+                return sevendayprices;
+            }
         }
     }
 }
