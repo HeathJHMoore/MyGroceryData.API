@@ -87,48 +87,148 @@ namespace Kroger.Repositories
             };
         }
 
-        public ProductDetails GetProductSummaryInformation(string productId, string locationid)
+        public ProductDetails GetProductSummaryInformation(string firebaseId, string productId)
         {
             using (var db = new SqlConnection(_connectionString))
             {
-                var sql = @"with maxDate as (
-                                                        SELECT 
-                                                            max(Capturedate) as max_date 
-                                                        FROM daily_product_snapshot
-                                                    )
-                            , todays_product_info as (
-                                                        SELECT 
-                                                            dps.*
-                                                        FROM daily_product_snapshot dps
-                                                            join maxDate mx on mx.max_date = dps.Capturedate
-                                                        WHERE dps.productid = '0001111091131' and dps.locationid = '02600567'
-                            						)
-                            						
+                var sql = @"
+                            with maxDate as (
+                            					SELECT 
+                            					    max(Capturedate) as max_date 
+                            					FROM daily_product_snapshot
+                            				)
+                            ,currentuser as (
+                                                Select u.*
+                                                FROM users u
+                                                WHERE u.firebaseid = @FirebaseId
+                                            )
+                            ,todays_product_info as (
+                                                SELECT 
+                                                    dps.*
+                                                FROM daily_product_snapshot dps
+                                                    JOIN currentuser cu 
+                                                        ON cu.DefaultLocationId = dps.LocationId
+                                                    JOIN maxDate mx 
+                                                        ON mx.max_date = dps.Capturedate
+                                                WHERE dps.productid = @ProductId
+                                             )  	
+                            , average_price as (
+                                                Select 
+                                                	p.ProductId, 
+                                                	round(avg(p.daily_price), 2) as average_price
+                                                FROM (
+                                                	SELECT 
+                                                		dps.ProductId,
+                                                		case when dps.ProductPromoPrice = 0 then dps.ProductRegularPrice else dps.ProductPromoPrice end as daily_price
+                                                	FROM daily_product_snapshot dps
+                                                		JOIN currentuser cu on cu.DefaultLocationId = dps.LocationId
+                                                	WHERE dps.ProductId = @ProductId
+                                                ) p
+                                                GROUP BY p.ProductId
+                            )
                             , product_summary_info as (
-                            							Select 
-                            							    productid,
-                            								max(productregularprice) as max_regular_price,
-                            	                            max(productpromoprice) as max_promo_price,
-                            	                            min(productregularprice) as min_regular_price,
-                            	                            min(productpromoprice) filter (where productpromoprice <> 0) as         min_promo_price
-                            							FROM daily_product_snapshot dps
-                            	                        WHERE dps.productid = '0001111091131' and dps.locationid = '02600567'
-                            							GROUP BY 1
-                            						)
-                            
-                            SELECT td.productid,
-                                   td.locationid,
-                                   td.productname,
-                              	   case when td.productpromoprice = 0 then td.productregularprice else td.productpromoprice end as          pricetoday,
-                              	   pr.max_regular_price as maxprice,
-                              	   case when pr.max_promo_price = 0 then pr.min_regular_price else pr.min_promo_price end as    minprice
-                            FROM todays_product_info td
-	                            JOIN product_summary_info pr
-		                            on pr.productid = td.productid";
-                var param = new { ProductID = productId, LocationId = locationid };
+                                                SELECT
+                                                    productid,
+                                                	max(dps.productregularprice) as max_regular_price,
+                                                    
+                                                    max(productpromoprice) as max_promo_price,
+                                                    min(productregularprice) as min_regular_price
+                                                FROM daily_product_snapshot dps
+                                                JOIN currentuser cu 
+                                                    ON cu.DefaultLocationId = dps.LocationId
+                                                WHERE dps.productid = @ProductId
+                                                GROUP BY ProductId
+                                              )
+                            , minimum_promo_price as (
+                            					SELECT 
+                            						dps.ProductId,
+                            						min(ProductPromoPrice) as min_promo_price
+                            					FROM daily_product_snapshot dps
+                                                JOIN currentuser cu
+                                                    ON cu.DefaultLocationId = dps.LocationId
+                            					WHERE dps.productid = @ProductId
+                                                AND dps.ProductPromoPrice <> 0
+                                                      GROUP BY ProductId
+				                               )
+                            ,time_on_clearance as (
+	                                            SELECT 
+	                                            	Cast(sum(case when dps.ProductPromoPrice <> 0 then 1 else 0 end) as float) as numerator,
+	                                            	Cast(count(*) as float) as denominator
+	                                            FROM daily_product_snapshot dps
+	                                            WHERE dps.ProductId = @ProductId
+                                               )
+                         
+                    SELECT td.productid,
+                           concat('0', td.locationid) as locationId,
+                           pd.productname,
+                      	   case when td.productpromoprice = 0 then td.productregularprice else td.productpromoprice end as pricetoday,
+                      	   pr.max_regular_price as maxprice,
+                           avp.average_price as averageprice,
+                      	   case when pr.max_promo_price = 0 then pr.min_regular_price else mp.min_promo_price end as    minprice,
+                           round((toc.numerator / toc.denominator) * 100, 2) as timeonclearance
+                    FROM todays_product_info td
+	                    JOIN product_summary_info pr 
+							on pr.productid = td.productid
+						JOIN products pd 
+							on pd.ProductId = td.productid
+						JOIN minimum_promo_price mp 
+							on mp.ProductId = td.ProductId
+                        CROSS JOIN time_on_clearance toc
+                        CROSS JOIN average_price avp";
+                var param = new { FirebaseId = firebaseId, ProductID = productId};
                 var productdetails = db.QueryFirst<ProductDetails>(sql, param);
                 return productdetails;
             };
+        }
+
+        public IEnumerable<object> Get7DayPriceAction(string firebaseid, string productId, string date)
+        {
+            using (var db = new SqlConnection(_connectionString))
+            {
+                var sql = @"
+                          WITH currentuser AS (
+                          	SELECT *
+                          	FROM users u
+                          	WHERE u.FirebaseId = @FirebaseId
+                          )
+                          
+                          , daterange as (
+                          	SELECT	
+                          	DATEADD(day, 0, @StartDate) as day_number
+                          	UNION 
+                          	Select
+                          	DATEADD(day, 1, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 2, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 3, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 4, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 5, @StartDate) as day_number
+                          	UNION
+                          	Select
+                          	DATEADD(day, 6, @StartDate) as day_number
+                          )
+                          
+                          
+                          SELECT 
+                          	dps.CaptureDate,
+                          	case when dps.ProductPromoPrice = 0 then dps.ProductRegularPrice else dps.ProductPromoPrice end as Price
+                          FROM daterange dr
+                          	JOIN daily_product_snapshot dps 
+                          		ON dps.CaptureDate = dr.day_number
+                          	JOIN currentuser cu 
+                          		ON cu.DefaultLocationId = dps.LocationId
+                          WHERE dps.ProductId = @ProductId;";
+                var param = new {FirebaseId = firebaseid, ProductId = productId, StartDate = date};
+                var sevendayprices = db.Query(sql, param);
+                return sevendayprices;
+            }
         }
     }
 }
