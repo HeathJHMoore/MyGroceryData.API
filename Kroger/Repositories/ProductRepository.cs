@@ -19,7 +19,7 @@ namespace Kroger.Repositories
         //static string _username = credentials.username;
         //string _connectionString = $@"Username={_username};Password={_password};Host=ec2-174-129-253-47.compute-1.amazonaws.com;Database=d5be1shopark8h;Port=5432;SSL Mode=Require;Trust Server Certificate=True;";
 
-        public IEnumerable<Product> GetAllProducts()
+        public IEnumerable<Product> GetAllProducts(string firebaseId)
         {
             using (var db = new SqlConnection(_connectionString))
             {
@@ -33,8 +33,14 @@ namespace Kroger.Repositories
                                 pd.productname
                             FROM daily_product_snapshot dps
                                 JOIN products pd on pd.productId = dps.productId
-                                JOIN maxDate mx on mx.max_date = dps.Capturedate";
-                var product = db.Query<Product>(sql);
+                                JOIN maxDate mx on mx.max_date = dps.Capturedate
+                                JOIN users u on u.DefaultLocationId = dps.LocationId
+                            WHERE u.FirebaseId = @FirebaseId";
+                var param = new
+                {
+                    FirebaseId = firebaseId
+                };
+                var product = db.Query<Product>(sql, param);
                 return product;
             };
         }
@@ -179,6 +185,58 @@ namespace Kroger.Repositories
                 var productdetails = db.QueryFirst<ProductDetails>(sql, param);
                 return productdetails;
             };
+        }
+
+        private int CheckUserWatchlist(string firebaseId, int productId)
+        {
+            using (var db = new SqlConnection(_connectionString))
+            {
+                var sql = @"
+                           SELECT count(*)
+                           FROM user_watchlist uw
+                            JOIN users u on u.Id = uw.UserId
+                           WHERE u.FirebaseId = @FirebaseId
+                            AND uw.ProductId = @ProductId 
+                           ";
+                var param = new
+                {
+                    FirebaseId = firebaseId,
+                    ProductId = productId
+                };
+                var output = db.QueryFirst<int>(sql, param);
+                return output;
+            }
+        }
+
+        public void AddToUserWatchlist(string firebaseId, int productId)
+        {
+
+            var check = this.CheckUserWatchlist(firebaseId, productId);
+
+            if (check == 0)
+            {
+
+                using (var db = new SqlConnection(_connectionString))
+                {
+                    var sql = @"
+                                insert into user_watchlist (UserId, ProductId, CreatedDate) 
+                                (
+                            	    Select
+                            		    u.Id,
+                            		    cast(@ProductId as bigint),
+                            		    GETDATE()
+                            	    FROM users u
+                            	    WHERE u.FirebaseId = @FirebaseId
+                                );
+                                ";
+                    var param = new
+                    {
+                        FirebaseId = firebaseId,
+                        ProductId = productId
+                    };
+                    db.Execute(sql, param);
+                }
+            }
         }
 
         public IEnumerable<object> Get7DayPriceAction(string firebaseid, string productId, string date)

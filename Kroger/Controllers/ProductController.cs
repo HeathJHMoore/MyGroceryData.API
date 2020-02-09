@@ -13,11 +13,11 @@ namespace Kroger.Controllers
     public class ValuesController : ControllerBase
     {
         // Gets today's information for all tracked products
-        [HttpGet]
-        public IEnumerable<Product> GetAllProducts()
+        [HttpGet("{firebaseId}/home")]
+        public IEnumerable<Product> GetAllProducts(string firebaseId)
         {
             var repo = new ProductRepository();
-            var firstProduct = repo.GetAllProducts();
+            var firstProduct = repo.GetAllProducts(firebaseId);
             return firstProduct;
         }
 
@@ -60,9 +60,11 @@ namespace Kroger.Controllers
         }
 
         // POST api/values
-        [HttpPost]
-        public void Post([FromBody] string value)
+        [HttpPost("{firebaseId}/{productId}/add-to-watchlist")]
+        public void AddToUserWatchlist(string firebaseId, int productId)
         {
+            var repo = new ProductRepository();
+            repo.AddToUserWatchlist(firebaseId, productId);
         }
 
         // PUT api/values/5
