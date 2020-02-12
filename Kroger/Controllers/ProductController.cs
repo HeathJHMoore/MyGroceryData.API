@@ -21,6 +21,15 @@ namespace Kroger.Controllers
             return firstProduct;
         }
 
+        [HttpGet("{firebaseId}/watchlist")]
+        public IEnumerable<Product> GetWatchlistProducts(string firebaseId)
+        {
+            var repo = new ProductRepository();
+            var firstProduct = repo.GetWatchlistProducts(firebaseId);
+            return firstProduct;
+        }
+
+
         // Gets today's information for a single product
         [HttpGet("{productId}")]
         public Product GetSingleProductInformation(string productId)

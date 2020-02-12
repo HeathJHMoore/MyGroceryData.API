@@ -23,7 +23,8 @@ namespace Kroger.Repositories
         {
             using (var db = new SqlConnection(_connectionString))
             {
-                var sql = @"with maxDate as (
+                var sql = @"with 
+                            maxDate as (
                                 SELECT 
                                     max(Capturedate) as max_date 
                                 FROM daily_product_snapshot
@@ -43,6 +44,40 @@ namespace Kroger.Repositories
                 var product = db.Query<Product>(sql, param);
                 return product;
             };
+        }
+
+        public IEnumerable<Product> GetWatchlistProducts(string firebaseId)
+        {
+            using (var db = new SqlConnection(_connectionString))
+            {
+                var sql = @"
+                          with 
+                            user_products_list as (
+                            Select
+                                uw.ProductId
+                            FROM user_watchlist uw
+                             JOIN users u on u.Id = uw.UserId
+                            WHERE u.FirebaseId = @FirebaseId
+                            )
+
+                            ,maxDate as (
+                                SELECT 
+                                    max(Capturedate) as max_date 
+                                FROM daily_product_snapshot
+                            )
+                            SELECT 
+                                dps.*,
+                                pd.productname
+                            FROM daily_product_snapshot dps
+                                JOIN products pd on pd.productId = dps.productId
+                                JOIN maxDate mx on mx.max_date = dps.Capturedate
+                                JOIN users u on u.DefaultLocationId = dps.LocationId
+                                JOIN user_products_list upl on upl.ProductId = dps.ProductId
+                            WHERE u.FirebaseId = @FirebaseId";
+                var param = new { FirebaseId = firebaseId };
+                var products = db.Query<Product>(sql, param);
+                return products;
+            }
         }
 
         public Product GetSingleProductInformation(string productId)
